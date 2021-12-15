@@ -2705,9 +2705,30 @@ getProbabilitiesFromC <- function(z, index=1, getScores=FALSE)
 		else
 		{
 			use <- 1:(min(nrow(callGrid), z$int2))
-			anss <- parRapply(z$cl[use], callGrid,
-							  doGetProbabilitiesFromC, z$thetaMat, index,
-							  getScores)
+
+			# If running with MPI, serialise the arguments once and then send them
+			# prior to calling the funciton
+			if (Rmpi::mpi.comm.size(0) > 1) {
+				thetaMat <- z$thetaMat
+				clusterExport.mpi.fast(
+					z$cl[use],
+					list("thetaMat", "index", "getScores"),
+					envir = environment()
+				)
+				anss <- clusterEvalQ.SplitByRow(
+					z$cl[use],
+					rowApply.DoGetProbabilitiesFromC(x, thetaMat, index, getScores),
+					callGrid
+				)
+			} else {
+			# parRapply is inefficient because it serialises the function and argument
+			# every time it is called, once for each worker
+			anss <- parRapply(
+				z$cl[use], callGrid,
+				doGetProbabilitiesFromC,
+				z$thetaMat, index, getScores
+			)
+			}
 		}
 	}
 	ans <- list()
@@ -2728,6 +2749,11 @@ getProbabilitiesFromC <- function(z, index=1, getScores=FALSE)
 	}
 	ans[[3]] <- sapply(anss, "[[", 3)
 	ans
+}
+
+# Vectorised doGetProbabilitiesFromC(), taking a list of arguments
+rowApply.DoGetProbabilitiesFromC <- function(x, ...) {
+	ans <- apply(x, 1, doGetProbabilitiesFromC, ...)
 }
 
 ##@doGetProbabilitiesFromC Maximum likelihood
