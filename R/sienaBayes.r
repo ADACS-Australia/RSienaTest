@@ -31,9 +31,17 @@ sienaBayes <- function(data, effects, algo, saveFreq=100,
 				storeAll = FALSE, prevAns=NULL, usePrevOnly=TRUE,
 				prevBayes = NULL, newProposalFromPrev=(prevBayes$nwarm >= 1),
 				silentstart=TRUE,
-				nbrNodes=1, clusterType=c("PSOCK", "FORK"),
+				nbrNodes=1, c("PSOCK", "SOCK", "FORK", "MPI"),,
 				getDocumentation=FALSE)
 {
+	clusterType <- match.arg(clusterType)
+	if (clusterType == "MPI") {
+		nbrNodes <- max(Rmpi::mpi.comm.size(0) - 1, 1)
+	} else if (is.null(nbrNodes)) {
+		nbrNodes <- 1
+	}
+	useCluster <- nbrNodes > 1
+
 	##@createStores internal sienaBayes Bayesian set up stores
 	createStores <- function()
 	{
@@ -896,7 +904,7 @@ covtrob <- function(x){
 						delta=delta, nmain=nmain, nprewarm=nprewarm, nwarm=nwarm,
 						lengthPhase1=lengthPhase1, lengthPhase3=lengthPhase3,
 						prevAns=prevAns, usePrevOnly=usePrevOnly,
-						silentstart=silentstart, clusterType=clusterType)
+						silentstart=silentstart, useCluster = useCluster, clusterType=clusterType)
 		cat("Initial global model estimates\n")
 		print(z$initialResults)
 		flush.console()
@@ -1193,10 +1201,15 @@ covtrob <- function(x){
 				clusterString <- rep("localhost", nbrNodes)
 				z$cl <- makeCluster(clusterString, type = "PSOCK",
 							outfile = "cluster.out")
+			} else if (clusterType == "MPI") {
+				z$cl <- makeCluster(
+					type = clusterType,
+					outfile = "cluster.out"
+				)
 			}
 			else
 			{
-				z$cl <- makeCluster(nbrNodes, type = "FORK",
+				z$cl <- makeCluster(nbrNodes, type = clusterType,
 								outfile = "cluster.out")
 			}
 			clusterCall(z$cl, library, pkgname, character.only = TRUE)
@@ -1490,7 +1503,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 						nmain, nprewarm, nwarm,
 						lengthPhase1, lengthPhase3,
 						prevAns, usePrevOnly,
-						silentstart, clusterType=c("PSOCK", "FORK"))
+						silentstart, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"))
 {
 	##@precision internal initializeBayes invert z$covtheta
 	## avoiding some inversion problems
@@ -1734,7 +1747,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 	{
 		startupGlobal <- siena07(startupModel, data=data, effects=effects,
 								batch=TRUE, silent=silentstart,
-								useCluster=(nbrNodes >= 2), nbrNodes=nbrNodes,
+								useCluster=useCluster, nbrNodes=nbrNodes,
 								clusterType=clusterType)
 	}
 	else
@@ -1750,7 +1763,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 		{
 			startupGlobal <- siena07(startupModel, data=data, effects=effects,
 								batch=TRUE, silent=silentstart,
-								useCluster=(nbrNodes >= 2), nbrNodes=nbrNodes,
+								useCluster=useCluster, nbrNodes=nbrNodes,
 								clusterType=clusterType, prevAns=prevAns)
 		}
 	}
@@ -2450,10 +2463,15 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 		clusterString <- rep("localhost", nbrNodes)
 		z$cl <- makeCluster(clusterString, type = "PSOCK",
 							outfile = "cluster.out")
+		} else if (clusterType == "MPI") {
+			z$cl <- makeCluster(
+				type = clusterType,
+				outfile = "cluster.out"
+			)
 		}
 		else
 		{
-			z$cl <- makeCluster(nbrNodes, type = "FORK",
+			z$cl <- makeCluster(nbrNodes, type = clusterType,
 								outfile = "cluster.out")
 		}
 		clusterCall(z$cl, library, pkgname, character.only = TRUE)
