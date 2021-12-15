@@ -1,0 +1,5 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RSienaTest))
+RSienaTest:::DONE(FALSE)
+while(!RSienaTest:::DONE()) {Sys.sleep(0.1)}
+

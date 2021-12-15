@@ -1,0 +1,15 @@
+# -*- Makefile -*-
+# vim:ft=make:
+
+EIGEN = lib/Eigen
+EIGEN_CPP = -I$(EIGEN)
+
+SOURCES = init.cpp @PKG_SOURCES@
+OBJECTS = $(SOURCES:.cpp=.o)
+
+PKG_CPPFLAGS = -I. $(EIGEN_CPP) @PKG_CPPFLAGS@ @OPENMP_CFLAGS@
+# -UNDEBUG -DR_LEGACY -DPROFILER
+PKG_LIBS     = $(ARCHLIB) @PKG_LIBS@ @OPENMP_CFLAGS@
+#  -lprofiler -ltcmalloc
+
+all: $(SHLIB)

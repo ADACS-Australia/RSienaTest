@@ -1,0 +1,66 @@
+Encoding: UTF-8
+Package: RSienaTest
+Type: Package
+Title: Siena - Simulation Investigation for Empirical Network Analysis
+Version: 1.2-30
+Date: 2021-07-13
+Authors@R: c(person("Tom", "Snijders", role = c("cre", "aut"), email = "tom.snijders@nuffield.ox.ac.uk", comment = c(ORCID = "0000-0003-3157-4157")),
+              person("Christian", "Steglich", role = c("aut","ctb"), comment = c(ORCID = "0000-0002-9097-0873")),
+              person("Johan", "Koskinen", role = c("aut","ctb"), comment = c(ORCID = "0000-0002-6860-325X")),
+              person("Nynke", "Niezink", role = c("aut","ctb")),
+              person("Viviana", "Amati", role = c("aut","ctb")),
+              person("Christoph", "Stadtfeld", role = "ctb", comment = c(ORCID = "0000-0002-2704-2134")),
+              person("James", "Hollway", role = "ctb", comment = c("IHEID", ORCID = "0000-0002-8361-9647")),
+              person("Per", "Block", role = "ctb"),
+              person("Robert", "Krause", role = "ctb"),
+              person("Charlotte", "Greenan", role = "ctb"),
+              person("Josh", "Lospinoso", role = "ctb"),
+              person("Michael", "Schweinberger", role = "ctb"),
+              person("Mark", "Huisman", role = "ctb"),
+              person("Krists", "Boitmanis", role = "ctr"),
+              person("Felix", "Schoenenberger", role = "ctb"),
+              person("Mark", "Ortmann", role = "ctb"),
+              person("Robert", "Hellpap", role = "ctb"),
+              person("Ruth", "Ripley", role = "aut"))
+Depends: R (>= 2.15.0)
+Imports: Matrix, lattice, parallel, MASS, RUnit, methods
+Suggests: xtable, network, tools, codetools, tcltk
+SystemRequirements: GNU make
+Description: The main purpose of this package is to perform simulation-based 
+   estimation of stochastic actor-oriented models for longitudinal network 
+   data collected as panel data. Dependent variables can be single or 
+   multivariate networks, which can be directed, non-directed, or two-mode;
+   and associated actor variables. 
+   There are also functions for testing parameters and checking goodness of fit.   
+   The package RSienaTest has some experimental features in addition to RSiena.
+   An overview of these models is given in Tom A.B. Snijders (2017), Stochastic 
+   Actor-Oriented Models for Network Dynamics, Annual Review of Statistics and 
+   Its Application, 4, 343-363 <doi: 10.1146/annurev-statistics-060116-054035>.
+   An extensive manual, scripts, and much further information is at the Siena 
+   website <http://www.stats.ox.ac.uk/~snijders/siena>.
+License: GPL-3
+LazyData: yes
+Biarch: yes
+NeedsCompilation: yes
+BuildResaveData: no
+URL: http://www.stats.ox.ac.uk/~snijders/siena
+Packaged: 2021-07-13 09:54:24 UTC; Tom.Snijders
+Author: Tom Snijders [cre, aut] (<https://orcid.org/0000-0003-3157-4157>),
+  Christian Steglich [aut, ctb] (<https://orcid.org/0000-0002-9097-0873>),
+  Johan Koskinen [aut, ctb] (<https://orcid.org/0000-0002-6860-325X>),
+  Nynke Niezink [aut, ctb],
+  Viviana Amati [aut, ctb],
+  Christoph Stadtfeld [ctb] (<https://orcid.org/0000-0002-2704-2134>),
+  James Hollway [ctb] (IHEID, <https://orcid.org/0000-0002-8361-9647>),
+  Per Block [ctb],
+  Robert Krause [ctb],
+  Charlotte Greenan [ctb],
+  Josh Lospinoso [ctb],
+  Michael Schweinberger [ctb],
+  Mark Huisman [ctb],
+  Krists Boitmanis [ctr],
+  Felix Schoenenberger [ctb],
+  Mark Ortmann [ctb],
+  Robert Hellpap [ctb],
+  Ruth Ripley [aut]
+Maintainer: Tom Snijders <tom.snijders@nuffield.ox.ac.uk>
