@@ -1219,6 +1219,14 @@ covtrob <- function(x){
 					initC = TRUE, profileData=FALSE, returnDeps=FALSE)
 			clusterSetRNGStream(z$cl, iseed = as.integer(runif(1,
 								max=.Machine$integer.max)))
+
+			if (clusterType == "MPI") {
+				# Make function "rowApply.DoGetProbabilitiesFromC" available on the workers
+				clusterExport.mpi.fast(z$cl,
+					list("rowApply.DoGetProbabilitiesFromC"),
+					envir=environment()
+				)
+			}
 		}
 
 		# Note: all parameter values are taken from prevBayes,
@@ -2481,6 +2489,14 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 					initC = TRUE, profileData=FALSE, returnDeps=FALSE)
 		clusterSetRNGStream(z$cl, iseed = as.integer(runif(1,
 								max=.Machine$integer.max)))
+
+		if (clusterType == "MPI") {
+			# Make function "rowApply.DoGetProbabilitiesFromC" available on the workers
+			clusterExport.mpi.fast(z$cl,
+				list("rowApply.DoGetProbabilitiesFromC"),
+				envir=environment()
+			)
+		}
 	}
 	## z$returnDataFrame <- TRUE # chains come back as data frames not lists
 	z$returnChains <- FALSE
