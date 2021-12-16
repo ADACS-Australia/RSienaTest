@@ -31,7 +31,7 @@ sienaBayes <- function(data, effects, algo, saveFreq=100,
 				storeAll = FALSE, prevAns=NULL, usePrevOnly=TRUE,
 				prevBayes = NULL, newProposalFromPrev=(prevBayes$nwarm >= 1),
 				silentstart=TRUE,
-				nbrNodes=1, c("PSOCK", "SOCK", "FORK", "MPI"),
+				nbrNodes=1, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"),
 				getDocumentation=FALSE)
 {
 	clusterType <- match.arg(clusterType)
