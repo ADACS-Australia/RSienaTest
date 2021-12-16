@@ -31,7 +31,7 @@ sienaBayes <- function(data, effects, algo, saveFreq=100,
 				storeAll = FALSE, prevAns=NULL, usePrevOnly=TRUE,
 				prevBayes = NULL, newProposalFromPrev=(prevBayes$nwarm >= 1),
 				silentstart=TRUE,
-				nbrNodes=1, c("PSOCK", "SOCK", "FORK", "MPI"),,
+				nbrNodes=1, c("PSOCK", "SOCK", "FORK", "MPI"),
 				getDocumentation=FALSE)
 {
 	clusterType <- match.arg(clusterType)
@@ -3086,4 +3086,3 @@ antitrafo <- function(x){x}
 ##@devtrafo derivative link function rates
 #devtrafo <- function(x){ifelse(x<0.01, 0.05, 1/(2*sqrt(x)))}
 devtrafo <- function(x){1}
-
