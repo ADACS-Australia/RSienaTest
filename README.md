@@ -5,8 +5,10 @@ Original source from https://rdrr.io/rforge/RSienaTest/, based on version 1.2-30
 There is an install_github function to install R packages hosted on GitHub in the `devtools` package.
 
 ```
-install_github("ADACS-Australia/RSienaTest")
+install_github("ADACS-Australia/RSienaTest",configure.vars="HAS_MPICC=no")
 ```
+
+The `HAS_MPICC=no` may be necessary depending on your system and the MPI library being used.
 
 Needs [mpi-Rscript](https://github.com/ADACS-Australia/mpi-Rscript) to run properly.
 
