@@ -1511,7 +1511,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 						nmain, nprewarm, nwarm,
 						lengthPhase1, lengthPhase3,
 						prevAns, usePrevOnly,
-						silentstart, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"))
+						silentstart, useCluster, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"))
 {
 	##@precision internal initializeBayes invert z$covtheta
 	## avoiding some inversion problems
