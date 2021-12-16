@@ -83,7 +83,11 @@ robmon <- function(z, x, useCluster, nbrNodes, initC, clusterString,
         }
 		if (!length(cl)) {
 			unlink("cluster.out")
-			if (clusterType == "FORK")
+            if (clusterType == "MPI") {
+                cl <- makeCluster(type = clusterType,
+					outfile = "cluster.out")
+            }
+			else if (clusterType == "FORK")
 			{
 				cl <- makeCluster(nbrNodes, type = clusterType,
 					outfile = "cluster.out")
@@ -353,10 +357,11 @@ robmon <- function(z, x, useCluster, nbrNodes, initC, clusterString,
         }
         if (!z$OK || !z$Phase3Interrupt)
 		{
-			if (useCluster)
-			{
-				stopCluster(cl)
-			}
+            if (useCluster) {
+                if (! clusterType == "MPI") {
+                    stopCluster(cl)
+                }
+            }
 			useCluster <- FALSE
             return(z)
 		}
@@ -393,10 +398,10 @@ robmon <- function(z, x, useCluster, nbrNodes, initC, clusterString,
 	}
 	z$gmm <- FALSE
     z$termination <- 'OK'
-    if (useCluster)
-    {
-		stopCluster(cl)
+    if (useCluster) {
+		if (! clusterType == "MPI") {
+			stopCluster(cl)
+		}
 	}
     z
 }
-

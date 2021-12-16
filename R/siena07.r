@@ -17,7 +17,7 @@ siena07 <- function(x, batch = FALSE, verbose = FALSE, silent=FALSE,
 	initC=TRUE,
 	clusterString=rep("localhost", nbrNodes), tt=NULL,
 	parallelTesting=FALSE, clusterIter=!x$maxlike,
-	clusterType=c("PSOCK", "FORK"),
+	clusterType=c("PSOCK", "SOCK", "FORK", "MPI"),
 	logLevelConsole='WARNING', logLevelFile='INFO',
 	logIncludeLocation=F, cl=NULL,...)
 {
@@ -37,6 +37,11 @@ siena07 <- function(x, batch = FALSE, verbose = FALSE, silent=FALSE,
 		RNGkind("default")
 	}
 	on.exit(exitfn())
+	if (useCluster) {
+		if (clusterType == "MPI") {
+			nbrNodes <- max(Rmpi::mpi.comm.size(0) - 1, 1)
+		}
+	}
 
 	# If the user is passing clusters through -cl- then change the
 	# useCluster to TRUE, and assign the -nbrNodes- to number of nodes
