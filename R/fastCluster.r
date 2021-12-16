@@ -5,14 +5,14 @@ substituteX <- function(x, expr) {
 
 clusterEvalQ.SplitByRow <- function(cl, expr, xgrid) {
     # Split the xgrid array into subsets/batches
-    xbatches <- splitRows(xgrid, length(cl))
+    xbatches <- snow::splitRows(xgrid, length(cl))
 
     # Create sets of expressions, replacing 'x' in each expression
     # with the correct subset of the xgrid array
     exprs <- lapply(xbatches, substituteX, expr = substitute(expr))
 
     # Evaluate the sets of expressions on each worker
-    docall(c, clusterApply(cl, exprs, eval))
+    snow::docall(c, snow::clusterApply(cl, exprs, eval))
 }
 
 clusterExport.mpi.fast <- local({
@@ -30,7 +30,7 @@ clusterExport.mpi.fast <- local({
 })
 
 clusterCall.mpi.fast <- function(cl, fun, ...) {
-    checkCluster(cl)
+    snow::checkCluster(cl)
 
     # create packet and serialise
     value <- list(fun = fun, args = list(...), return = TRUE, tag = NULL)
@@ -44,5 +44,5 @@ clusterCall.mpi.fast <- function(cl, fun, ...) {
     }
 
     # recieve results from workers and return
-    checkForRemoteErrors(lapply(cl, recvResult))
+    snow::checkForRemoteErrors(lapply(cl, snow::recvResult))
 }
