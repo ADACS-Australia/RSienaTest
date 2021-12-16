@@ -18,14 +18,14 @@ export(
 
 export(
 	sienaBayes, glueBayes, simpleBayesTest, multipleBayesTest,
-	extract.sienaBayes, extract.posteriorMeans, plotPostMeansMDS, 
+	extract.sienaBayes, extract.posteriorMeans, plotPostMeansMDS,
    shortBayesResults, algorithms, profileLikelihoods,
 	sienaRIDynamics
 )
 
 export(sienacpp)
 
-import(Matrix, lattice, parallel, MASS)
+import(Matrix, lattice, snow, parallel, MASS)
 importFrom("grDevices", "rgb", "xy.coords")
 importFrom("graphics", "axis", "barplot", "contour", "layout", "lines",
            "mtext", "pairs", "panel.smooth", "par", "pie", "plot",
