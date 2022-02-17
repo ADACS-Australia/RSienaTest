@@ -31,9 +31,17 @@ sienaBayes <- function(data, effects, algo, saveFreq=100,
 				storeAll = FALSE, prevAns=NULL, usePrevOnly=TRUE,
 				prevBayes = NULL, newProposalFromPrev=(prevBayes$nwarm >= 1),
 				silentstart=TRUE,
-				nbrNodes=1, clusterType=c("PSOCK", "FORK"),
+				nbrNodes=1, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"),
 				getDocumentation=FALSE)
 {
+	clusterType <- match.arg(clusterType)
+	if (clusterType == "MPI") {
+		nbrNodes <- max(Rmpi::mpi.comm.size(0) - 1, 1)
+	} else if (is.null(nbrNodes)) {
+		nbrNodes <- 1
+	}
+	useCluster <- nbrNodes > 1
+
 	##@createStores internal sienaBayes Bayesian set up stores
 	createStores <- function()
 	{
@@ -896,7 +904,7 @@ covtrob <- function(x){
 						delta=delta, nmain=nmain, nprewarm=nprewarm, nwarm=nwarm,
 						lengthPhase1=lengthPhase1, lengthPhase3=lengthPhase3,
 						prevAns=prevAns, usePrevOnly=usePrevOnly,
-						silentstart=silentstart, clusterType=clusterType)
+						silentstart=silentstart, useCluster = useCluster, clusterType=clusterType)
 		cat("Initial global model estimates\n")
 		print(z$initialResults)
 		flush.console()
@@ -1193,10 +1201,15 @@ covtrob <- function(x){
 				clusterString <- rep("localhost", nbrNodes)
 				z$cl <- makeCluster(clusterString, type = "PSOCK",
 							outfile = "cluster.out")
+			} else if (clusterType == "MPI") {
+				z$cl <- makeCluster(
+					type = clusterType,
+					outfile = "cluster.out"
+				)
 			}
 			else
 			{
-				z$cl <- makeCluster(nbrNodes, type = "FORK",
+				z$cl <- makeCluster(nbrNodes, type = clusterType,
 								outfile = "cluster.out")
 			}
 			clusterCall(z$cl, library, pkgname, character.only = TRUE)
@@ -1206,6 +1219,14 @@ covtrob <- function(x){
 					initC = TRUE, profileData=FALSE, returnDeps=FALSE)
 			clusterSetRNGStream(z$cl, iseed = as.integer(runif(1,
 								max=.Machine$integer.max)))
+
+			if (clusterType == "MPI") {
+				# Make function "rowApply.DoGetProbabilitiesFromC" available on the workers
+				clusterExport.mpi.fast(z$cl,
+					list("rowApply.DoGetProbabilitiesFromC"),
+					envir=environment()
+				)
+			}
 		}
 
 		# Note: all parameter values are taken from prevBayes,
@@ -1490,7 +1511,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 						nmain, nprewarm, nwarm,
 						lengthPhase1, lengthPhase3,
 						prevAns, usePrevOnly,
-						silentstart, clusterType=c("PSOCK", "FORK"))
+						silentstart, useCluster, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"))
 {
 	##@precision internal initializeBayes invert z$covtheta
 	## avoiding some inversion problems
@@ -1734,7 +1755,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 	{
 		startupGlobal <- siena07(startupModel, data=data, effects=effects,
 								batch=TRUE, silent=silentstart,
-								useCluster=(nbrNodes >= 2), nbrNodes=nbrNodes,
+								useCluster=useCluster, nbrNodes=nbrNodes,
 								clusterType=clusterType)
 	}
 	else
@@ -1750,7 +1771,7 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 		{
 			startupGlobal <- siena07(startupModel, data=data, effects=effects,
 								batch=TRUE, silent=silentstart,
-								useCluster=(nbrNodes >= 2), nbrNodes=nbrNodes,
+								useCluster=useCluster, nbrNodes=nbrNodes,
 								clusterType=clusterType, prevAns=prevAns)
 		}
 	}
@@ -2450,10 +2471,15 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 		clusterString <- rep("localhost", nbrNodes)
 		z$cl <- makeCluster(clusterString, type = "PSOCK",
 							outfile = "cluster.out")
+		} else if (clusterType == "MPI") {
+			z$cl <- makeCluster(
+				type = clusterType,
+				outfile = "cluster.out"
+			)
 		}
 		else
 		{
-			z$cl <- makeCluster(nbrNodes, type = "FORK",
+			z$cl <- makeCluster(nbrNodes, type = clusterType,
 								outfile = "cluster.out")
 		}
 		clusterCall(z$cl, library, pkgname, character.only = TRUE)
@@ -2463,6 +2489,14 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 					initC = TRUE, profileData=FALSE, returnDeps=FALSE)
 		clusterSetRNGStream(z$cl, iseed = as.integer(runif(1,
 								max=.Machine$integer.max)))
+
+		if (clusterType == "MPI") {
+			# Make function "rowApply.DoGetProbabilitiesFromC" available on the workers
+			clusterExport.mpi.fast(z$cl,
+				list("rowApply.DoGetProbabilitiesFromC"),
+				envir=environment()
+			)
+		}
 	}
 	## z$returnDataFrame <- TRUE # chains come back as data frames not lists
 	z$returnChains <- FALSE
@@ -2687,9 +2721,30 @@ getProbabilitiesFromC <- function(z, index=1, getScores=FALSE)
 		else
 		{
 			use <- 1:(min(nrow(callGrid), z$int2))
-			anss <- parRapply(z$cl[use], callGrid,
-							  doGetProbabilitiesFromC, z$thetaMat, index,
-							  getScores)
+
+			# If running with MPI, serialise the arguments once and then send them
+			# prior to calling the funciton
+			if (Rmpi::mpi.comm.size(0) > 1) {
+				thetaMat <- z$thetaMat
+				clusterExport.mpi.fast(
+					z$cl[use],
+					list("thetaMat", "index", "getScores"),
+					envir = environment()
+				)
+				anss <- clusterEvalQ.SplitByRow(
+					z$cl[use],
+					rowApply.DoGetProbabilitiesFromC(x, thetaMat, index, getScores),
+					callGrid
+				)
+			} else {
+			# parRapply is inefficient because it serialises the function and argument
+			# every time it is called, once for each worker
+			anss <- parRapply(
+				z$cl[use], callGrid,
+				doGetProbabilitiesFromC,
+				z$thetaMat, index, getScores
+			)
+			}
 		}
 	}
 	ans <- list()
@@ -2710,6 +2765,11 @@ getProbabilitiesFromC <- function(z, index=1, getScores=FALSE)
 	}
 	ans[[3]] <- sapply(anss, "[[", 3)
 	ans
+}
+
+# Vectorised doGetProbabilitiesFromC(), taking a list of arguments
+rowApply.DoGetProbabilitiesFromC <- function(x, ...) {
+	ans <- apply(x, 1, doGetProbabilitiesFromC, ...)
 }
 
 ##@doGetProbabilitiesFromC Maximum likelihood
@@ -3042,4 +3102,3 @@ antitrafo <- function(x){x}
 ##@devtrafo derivative link function rates
 #devtrafo <- function(x){ifelse(x<0.01, 0.05, 1/(2*sqrt(x)))}
 devtrafo <- function(x){1}
-
