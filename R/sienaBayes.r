@@ -32,7 +32,8 @@ sienaBayes <- function(data, effects, algo, saveFreq=100,
 				prevBayes = NULL, newProposalFromPrev=(prevBayes$nwarm >= 1),
 				silentstart=TRUE,
 				nbrNodes=1, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"),
-				getDocumentation=FALSE)
+				getDocumentation=FALSE,
+				hierarchical = TRUE)
 {
 	clusterType <- match.arg(clusterType)
 	if (clusterType == "MPI") {
@@ -355,8 +356,10 @@ browser()
 			{
 				if (!frequentist)
 				{
+				  if (	hierarchical ){
 				# sample the global parameters:
 				sampleMuSigma()
+				  }
 				}
 				zm$posteriorMu[i, ] <<- z$muTemp
 				zm$posteriorEta[i,] <<- z$thetaMat[1,z$set2]
@@ -635,14 +638,29 @@ browser()
 		muhat <- rowMeans( Thetas )# the average across groups
 		matQ <- (z$nGroup - 1)*cov(t(Thetas))
 # prior Lambda = z$priorDf*z$priorSigma
-		z$SigmaTemp <<- invWish(z$priorDf + z$nGroup,
+		## commented out in previous Hack:
+		# prior Lambda = z$priorDf*z$priorSigma
+		#	z$SigmaTemp <<- invWish(z$priorDf + z$nGroup,
+		#			z$priorDf*z$priorSigma + matQ +
+		#			(z$priorKappa*z$nGroup/(z$priorKappa + z$nGroup))*
+		#			tcrossprod( muhat - z$priorMu, muhat - z$priorMu ) )
+		if (	hierarchical ){
+		  z$SigmaTemp <<- invWish(z$priorDf + z$nGroup,
 				z$priorDf*z$priorSigma + matQ +
 				(z$priorKappa*z$nGroup/(z$priorKappa + z$nGroup))*
 				tcrossprod( muhat - z$priorMu, muhat - z$priorMu ) )
+		
+		
+		
 		z$muTemp <<- t(chol( ( z$priorKappa + z$nGroup )^(-1)*z$SigmaTemp )) %*%
 			rnorm( z$p1 , 0 , 1 ) +
 			(z$nGroup/( z$priorKappa + z$nGroup ))*muhat +
 			(z$priorKappa/( z$priorKappa + z$nGroup ))*z$priorMu
+		}
+		if (	hierarchical==FALSE ){
+		  z$SigmaTemp <<-priorSigma
+		  z$muTemp <<- priorMu
+		}
 	}
 
 	##@RobbinsMonro internal sienaBayes;
@@ -688,8 +706,10 @@ browser()
 			}
 			# The update needs to be applied only to the unmasked part,
 			# because the masked part plays no role.
+			if (	hierarchical ){
 			z$muTemp[updated] <<-  z$muTemp[updated] -
 						  bgain * correct * (z$muTemp[updated] - muhat)
+			}
 # or with a matrix:
 #			z$muTemp[updated] - bgain *
 #				as.vector(z$dmuinv %*% (z$muTemp[updated] - muhat))
@@ -904,7 +924,8 @@ covtrob <- function(x){
 						delta=delta, nmain=nmain, nprewarm=nprewarm, nwarm=nwarm,
 						lengthPhase1=lengthPhase1, lengthPhase3=lengthPhase3,
 						prevAns=prevAns, usePrevOnly=usePrevOnly,
-						silentstart=silentstart, useCluster = useCluster, clusterType=clusterType)
+						silentstart=silentstart, useCluster = useCluster, clusterType=clusterType,
+						hierarchical =hierarchical)
 		cat("Initial global model estimates\n")
 		print(z$initialResults)
 		flush.console()
@@ -1109,23 +1130,38 @@ covtrob <- function(x){
 		# Average the covariance matrices over the runs
 			if (priorRatesFromData >= 0)
 			{
+			  if (	hierarchical ){
 				z$muTemp <-
 					colMeans(z$ThinParameters[lastPhaseWarm:nwarm, ,
 							z$randomParametersInGroup, drop=FALSE], dims=2)
+			  }
+			  if (	hierarchical==FALSE ){
+			    z$muTemp <-priorMu
+			  }
+				
 				tmp <- lapply(lastPhaseWarm:nwarm, function(i, x)
 					{cov(x[i,,z$randomParametersInGroup])},
 										x=z$ThinParameters)
 			}
 			else
 			{# in the following, changed varyingGeneralParametersInGroup to randomParametersInGroup, 9/4/19
+			  if (	hierarchical ){
 				z$muTemp <-
 					colMeans(z$ThinParameters[lastPhaseWarm:nwarm, ,
 						z$randomParametersInGroup, drop=FALSE], dims=2)
+			  }
+			  if (	hierarchical==FALSE ){
+			    z$muTemp <-priorMu
+			  }
+			  
 				tmp <- lapply(lastPhaseWarm:nwarm, function(i, x)
 					{cov(x[i,,z$randomParametersInGroup])},
 										x=z$ThinParameters)
 			}
 			z$SigmaTemp <- Reduce('+', tmp) / (nwarm - lastPhaseWarm + 1)
+			if (	hierarchical==FALSE ){
+			  z$SigmaTemp <<-priorSigma
+			}
 		}
 
 		cat('Parameter values after warming up\n')
@@ -1399,11 +1435,24 @@ covtrob <- function(x){
 	{
 	# Average muTemp, eta (in thetaMat) and SigmaTemp
 	# over the last half of Phase 2
+	  if (	hierarchical ){
 		z$muTemp <- colMeans(z$ThinPosteriorMu[partPhase2:endPhase2, ])
+	  }
+	  if (	hierarchical==FALSE ){
+	    z$muTemp <-priorMu
+	  }
+		
 		z$thetaMat[1:z$nGroup,z$set2] <-
 				colMeans(z$ThinPosteriorEta[partPhase2:endPhase2,,drop=FALSE])
+		if (	hierarchical ){
 		z$SigmaTemp <- colMeans(z$ThinPosteriorSigma[partPhase2:endPhase2,,],
 												dims=1)
+		
+		}
+		if (	hierarchical==FALSE ){
+		  z$SigmaTemp <<-priorSigma
+		}
+		
 	}
 	if (z$incidentalBasicRates)
 	{
@@ -1418,11 +1467,14 @@ covtrob <- function(x){
 
 	ctime6<- proc.time()
 	if (frequentist){cat('Phase 2 took', round((ctime6-ctime5)[3]),'seconds elapsed.\n')}
+	if (hierarchical)
+	{
 	cat("\nMu = ", round(z$muTemp,3), "\nEta = ",
 				round(z$ThinPosteriorEta[ii,],3), "\nSigma = \n")
 	print(round(z$SigmaTemp,3))
 	cat("\n")
 	flush.console()
+	}
 	savePartial()
 
 # Phase 3
@@ -1436,10 +1488,12 @@ covtrob <- function(x){
 		storeData()
 		cat('main', ii, '(', nwarm+nmain, ')')
 		if (frequentist) cat(', Phase 3')
+		if (hierarchical){
 		cat("\nMu = ", round(z$muTemp,3), "\nEta = ",
 				round(z$ThinPosteriorEta[ii,],3), "\nSigma = \n")
 		print(round(z$SigmaTemp,3))
 		cat("\n")
+		}
 #		flush.console()
 		if (frequentist)
 		{
@@ -1511,7 +1565,8 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 						nmain, nprewarm, nwarm,
 						lengthPhase1, lengthPhase3,
 						prevAns, usePrevOnly,
-						silentstart, useCluster, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"))
+						silentstart, useCluster, clusterType=c("PSOCK", "SOCK", "FORK", "MPI"),
+						hierarchical)
 {
 	##@precision internal initializeBayes invert z$covtheta
 	## avoiding some inversion problems
@@ -1647,6 +1702,9 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 	# ensure that all basic rates are varying between groups
 	effects$randomEffects[effects$basicRate] <- rep(TRUE,sum(effects$basicRate))
 	# note: this change is made only within function initializeBayes
+	if (hierarchical==FALSE){
+	  cat('hierarchical: FALSE means mu and Sigma will remain fixed\n')
+	}
 
 	## Determine starting values and covariance matrices
 	## for proposal distributions.
@@ -2450,16 +2508,34 @@ initializeBayes <- function(data, effects, algo, nbrNodes,
 									z$nGroup, z$TruNumParsPlus))
 	if (priorRatesFromData < 0)
 	{
+	  
+	  if (	hierarchical ){
 		z$muTemp <- matrix(meanThetaMat[z$varyingGeneralParametersInGroup], z$p1, 1)
+	  }
+	  
+	  if (	hierarchical==FALSE ){
+	    z$muTemp <-priorMu
+	  }
 	}
 	else
 	{
 	meanThetaMat <- colMeans(matrix( z$thetaMat[!is.na(z$thetaMat)],
 									z$nGroup, z$TruNumPars))
+	if (	hierarchical ){
 		z$muTemp <- matrix(meanThetaMat[z$randomParametersInGroup], z$p1, 1)
+	}
+	if (	hierarchical==FALSE ){
+	  z$muTemp <-priorMu
+	}
+	
+	
 	}
 	z$SigmaTemp <- diag(z$p1)
 
+	if (	hierarchical==FALSE ){
+	z$SigmaTemp <-priorSigma
+	}
+	
 	is.batch(TRUE)
 
 	if (nbrNodes > 1 && z$observations > 1)
