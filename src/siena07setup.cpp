@@ -16,6 +16,7 @@
 
 #include "siena07setup.h"
 
+#include <exception>
 #include <vector>
 #include <cstring>
 #include <R_ext/Random.h>

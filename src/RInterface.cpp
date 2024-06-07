@@ -215,9 +215,12 @@ SEXP sienaInitialize() {
 	}
 #endif // MAC
 #endif // OPENMPI
-	int argc = 0;
-	char** argv;
-	MPI_Init(&argc, &argv);
+	int initialized;
+	MPI_Initialized(&initialized);
+	if (!initialized)
+	{
+		MPI_Init(NULL, NULL);
+	}
 #endif // MPI2
 	return R_NilValue;
 }
